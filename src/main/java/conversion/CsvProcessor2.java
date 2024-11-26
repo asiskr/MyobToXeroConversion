@@ -10,9 +10,14 @@ import java.util.Scanner;
 
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 public class CsvProcessor2 {
     double closingBalance;
+    static Workbook workbook = new XSSFWorkbook();  // Create a new workbook for Excel
+    static Sheet sheet = workbook.createSheet("Asset Data");  // Create a new sheet
+    static String assetName = null; 
+
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
@@ -103,9 +108,7 @@ public class CsvProcessor2 {
     }
 
     private static void processCsvFile(File inputFile, Path outputFilePath) {
-    	
-    	
-    	List<List<String>> allRows = new ArrayList<>();
+        List<List<String>> allRows = new ArrayList<>();
         double closingBalance;
         try (BufferedReader reader = new BufferedReader(new FileReader(inputFile));
              BufferedWriter writer = new BufferedWriter(new FileWriter(outputFilePath.toFile()))) {
@@ -127,8 +130,9 @@ public class CsvProcessor2 {
                 if (lineNumber <= 16) {
                     continue;
                 }
-
-                if (line.isEmpty()) continue;
+                if (line.matches("^,*$")) {
+                    continue;  // Skip this row as it contains only commas or is empty
+                }
 
                 if (line.contains("TOTAL")) {
                     break;
@@ -139,7 +143,7 @@ public class CsvProcessor2 {
                 for (int i = 18; i < columns.length; i++) {
                     columns[i] = columns[i].replaceAll("^\"|\"$", "").trim();
                 }
-
+                String number = (columns.length > 0) ? columns[0] : "";
                 String col1 = (columns.length > 0) ? columns[0] : "";
                 String col2 = (columns.length > 1) ? columns[1] : "";
                 String col4 = (columns.length > 3) ? columns[3] : "";
@@ -149,80 +153,80 @@ public class CsvProcessor2 {
 
                 col2 = col2.replaceAll("\\s*::\\s*AM", "").trim();
 
-                String col4Text = "";
+                List<String> assetRow = new ArrayList<>();
+                assetRow.add(col1.trim());
+                assetRow.add(col4.trim());
+                allRows.add(assetRow);
+
+                String col4Text = col4;
                 String col4Number = "";
                 String col6 = "";
 
-                col4Text = col4.trim();  
-                
-                col4Text = col4Text.replaceAll("[^\\x00-\\x7F]", "");
-                col4Text = col4Text.replaceAll("\\.", "");
+                col4Text = col4.replaceAll("[^\\x00-\\x7F]", "").replaceAll("\\.", "");
                 col4Number = "";
+                if (col4.trim().isEmpty()) {
+                    continue;
+                }
+
                 if (col4.matches(".*\\d+\\.\\d+.*")) {
                     col4Number = col4.replaceAll("[^\\d.]", "").trim();
-                    col4Text = col4.replaceAll("[^\\D]", "").trim();
+                    col4Text = col4.replaceAll("[^\\D]", "");
                 }
+
+                assetName = col4Text;
+//                Row row = sheet.createRow(sheet.getPhysicalNumberOfRows());  // Create a new row
+//                Cell assetNameCell = row.createCell(0);  // Create a new cell in the first column
+//                assetNameCell.setCellValue(assetName);
+//                if (col4Number.isEmpty() || col4Number.equals("null") || col4Number.equals("")) {
+//                    continue;  // Skip to the next iteration if col4Number is empty
+//                }
+
+                if (assetName == null) {  // Only assign assetName if it's not already set
+                    assetName = col4Text;  // Initial assignment of assetName
+                }
+
                 double col4Value = col4Number.isEmpty() ? 0.0 : Double.parseDouble(col4Number);
                 closingBalance = colH - col4Value;
-
-               
 
                 previousTextInCol4 = col4Text;
 
                 String col13 = col2;
                 String col25 = col2;
 
-                String assetName = col4Text;
                 String purchaseDate = col2;
                 String assetNumber = col1;
                 String assetType = col6;
                 String book_DepreciationStartDate = col13;
                 String tax_DepreciationStartDate = col25;
-                String tax_Rate= Book_Rate;
+                String tax_Rate = Book_Rate;
                 closingBalance = col4Value - colH;
                 String closingBalanceStr = (closingBalance == 0.0) ? "" : String.valueOf(closingBalance);
 
                 assetName = assetName.replaceAll("\\.", "");
 
-                 bookAveragingMethod = assetNumber.isEmpty() ? "" : "Actual Days";
-                 taxRate = assetNumber.isEmpty() ? "" : "Actual Days";  // Don't set "Actual Days" if assetNumber is empty
+                bookAveragingMethod = purchaseDate.isEmpty() ? "" : "Actual Days";
+                taxRate = purchaseDate.isEmpty() ? "" : "Actual Days";  // Don't set "Actual Days" if assetNumber is empty
 
                 String[] outputRow = {
-                        !assetName.isEmpty() ? assetName : "",
-                        !assetNumber.isEmpty() ? assetNumber : "",
-                        !purchaseDate.isEmpty() ? purchaseDate : "",
-                        !col4Number.isEmpty() ? col4Number : "",
-                        !assetType.isEmpty() ? assetType : "",
-                        "", "", "", "", "", "", "", 
-                        !book_DepreciationStartDate.isEmpty() ? book_DepreciationStartDate : "",
-                        "", "", "", !bookAveragingMethod.isEmpty() ? bookAveragingMethod : "",
-                        !Book_Rate.isEmpty() ? Book_Rate : "", "", !closingBalanceStr.isEmpty() ? closingBalanceStr : "",
-                        "", "", "", "", !tax_DepreciationStartDate.isEmpty() ? tax_DepreciationStartDate : "",
-                        "", "", !taxRate.isEmpty() ? taxRate : "", !Book_Rate.isEmpty() ? Book_Rate : "",
-                        !closingBalanceStr.isEmpty() ? closingBalanceStr : "", "", "", "", ""
+                        assetName.isEmpty() ? "" : assetName,
+                        		assetNumber.isEmpty() ? "" : assetNumber,
+                        purchaseDate.isEmpty() ? "" : purchaseDate,
+                        col4Number.isEmpty() ? "" : col4Number,
+                        assetType.isEmpty() ? "" : assetType,
+                        "", "", "", "", "", "", "",
+                        book_DepreciationStartDate.isEmpty() ? "" : book_DepreciationStartDate,
+                        "", "", "", bookAveragingMethod.isEmpty() ? "" : bookAveragingMethod,
+                        Book_Rate.isEmpty() ? "" : Book_Rate, "", closingBalanceStr.isEmpty() ? "" : closingBalanceStr,
+                        "", "", "", "", tax_DepreciationStartDate.isEmpty() ? "" : tax_DepreciationStartDate,
+                        "", "", taxRate.isEmpty() ? "" : taxRate, Book_Rate.isEmpty() ? "" : Book_Rate, "",
+                        closingBalanceStr.isEmpty() ? "" : closingBalanceStr, "", "", "", ""
                 };
-                allRows.add(Arrays.asList(outputRow));
+
                 writer.write(String.join(",", outputRow));
                 writer.newLine();
             }
-            System.out.println("Processed Data (ArrayList):");
-            for (List<String> row : allRows) {
-                List<String> filteredRow = new ArrayList<>();
-
-                for (String value : row) {
-                    if (value != null && !value.trim().isEmpty()) {
-                        filteredRow.add(value);
-                    }
-                }
-
-                System.out.println(String.join(",", filteredRow));
-            }
-
-
-            System.out.println("Processed output file has been created at: " + outputFilePath);
         } catch (IOException e) {
-            System.err.println("Error while processing the file: " + e.getMessage());
+            e.printStackTrace();
         }
     }
-    
 }
